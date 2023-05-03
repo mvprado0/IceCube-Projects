@@ -72,8 +72,10 @@ def asimov_vals(theta23list, metric_asimov_file, metric):
             fit_names_completed.append(fit)
 
         except KeyError:
+            if bool(data[fit]):
+                print("Missing theta23 values! Check list of values provided.")
             pass
-   
+
     # List of indeces of the fit names that user provided. Necessary mostly just for the quick fit case.
     index_names_completed = [fit_names.index(i) for i in fit_names_completed if i in fit_names]
     
@@ -210,17 +212,17 @@ def make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO
     plt.grid()
 
     if not simple_sens:
-        ax.plot(xval, sens_NO, label='9.3 years, true NO', lw=4.5, color='red')
-        ax.plot(xval, sens_IO, label='9.3 years, true IO', lw=4.5, color='blue')
+        ax.plot(xval, sens_NO, label='9.28 years, true NO', lw=4.5, color='red')
+        ax.plot(xval, sens_IO, label='9.28 years, true IO', lw=4.5, color='blue')
     else:
-        ax.plot(xval, simple_sens_NO, label='9.3 years, true NO', lw=4.5, color='red')
-        ax.plot(xval, simple_sens_IO, label='9.3 years, true IO', lw=4.5, color='blue')
+        ax.plot(xval, simple_sens_NO, label='9.28 years, true NO', lw=4.5, color='red')
+        ax.plot(xval, simple_sens_IO, label='9.28 years, true IO', lw=4.5, color='blue')
 
     if two_sensitivities:
         xval2, metric_all2, dmetric_all2, sens_NO2, sens_IO2, simple_sens_NO2, simple_sens_IO2 = asimov_vals(theta23list, asimov_file2, metric)
         if not simple_sens:
-            ax.plot(xval2, sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dashed')
-            ax.plot(xval2, sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dashed')
+            ax.plot(xval2, sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dotted')
+            ax.plot(xval2, sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dotted')
         else:
             ax.plot(xval2, simple_sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dotted')
             ax.plot(xval2, simple_sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dotted')
@@ -232,7 +234,15 @@ def make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO
 
     ax.set_xlabel(r'$\sin^2 \theta_{23}$', fontsize='x-large')
     ax.set_ylabel(r'$\eta_{\sigma}$', fontsize='x-large')
-    plt.title("DeepCore NMO Asimov Sensitivity", fontsize=25)
+    plt.title("DeepCore Neutrino Mass Ordering", fontsize=25)
+    ax.text(0.39, 0.95, 'IceCube Work in Progress', fontsize=15, c='red')
+    #ax.text(0.352, 0.87, 'IceCube Work in Progress', fontsize=15, c='red')
+    #ax.set_xticks([0.42, 0.46, 0.5, 0.54, 0.58])
+
+    textstr = 'Median Sensitivity'
+    props = dict(boxstyle='square', facecolor='wheat', alpha=0.5)
+    ax.text(0.4, 0.99, textstr, fontsize=16, bbox=props)
+    #ax.text(0.36, 0.91, textstr, fontsize=16, bbox=props)
 
     ax.legend(loc='upper left', fontsize=16, ncol=1)
 
@@ -403,7 +413,7 @@ make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, si
 
 # Compare main sensitivity to a second sensitivity for testing purposes
 if (args.asimov_file2 != None):
-    theta23_2 = np.round(np.linspace(39.0, 51.0, 20),2)
+    theta23_2 = np.round(np.linspace(38.0, 52.0, 50),2)[4:]
     theta23list2 = theta23_2.tolist()
     
     make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, simple_sens=args.simple_sens, greco=args.greco, two_sensitivities=True, theta23list=theta23list2, asimov_file2=args.asimov_file2, metric=args.metric)
