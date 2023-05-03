@@ -1,6 +1,6 @@
 """
 
-This script takes all the fit files for all theta23 values and organizes them into a single JSON file
+This script takes all the Asimov fit files for all theta23 values and organizes them into a single JSON file
 for plotting and for keeping better track of all the results.
 
 Author: Maria Prado Rodriguez (mvprado@icecube.wisc.edu)
@@ -21,8 +21,12 @@ def extract_values(inputfiles, metric_file, metric_alt_file, octant_file):
         
         # Load results of the fit
         metric_val = data["metric_fit"]
-        metric_val_alt = data["metric_alternate_fit"]
         theta23_bf = data["theta23_bf"]
+
+        try:
+            metric_val_alt = data["metric_alternate_fit"]
+        except KeyError:
+            metric_val_alt = None
 
         # Determine type of fit
         if "0.json" in f:
@@ -50,16 +54,14 @@ def extract_values(inputfiles, metric_file, metric_alt_file, octant_file):
         elif "mod_chi2" in f:
             metric = "mod_chi2"
 
-        if (metric=="llh" or metric=="conv_llh"):
-            metric_val = -1*metric_val
-            metric_val_alt = -1*metric_val_alt
-   
         # Determine the truth value of theta23
         result = re.search(metric + "_(.*)degree", f)
         theta23 = result.group(1)
     
         store_metric_val(metric_file, mass_order, theta23, metric_val, fit_type)
-        store_metric_val(metric_alt_file, mass_order, theta23, metric_val_alt, fit_type)
+        
+        if (metric_val_alt != None): 
+            store_metric_val(metric_alt_file, mass_order, theta23, metric_val_alt, fit_type)
 
         if (fit_type==1 or fit_type==2):
             store_octant(octant_file, mass_order, theta23, theta23_bf, fit_type)
