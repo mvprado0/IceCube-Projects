@@ -51,30 +51,70 @@ def asimov_vals(theta23list, metric_asimov_file, metric):
     metric_all = []
     dmetric_all = []
     xvals_asimov = []
+    fit_names_completed = []
 
+    # Make x-value list for plots
+    for t, theta in enumerate(theta23list):
+        th_degree = theta * ureg.degree
+        xval = np.sin(th_degree.m_as('radian'))**2
+        xvals_asimov.append(xval)
+    
     # Create list of lists with all metric values in specific order for plotting 
     for i, fit in enumerate(fit_names):
         metric_fit = []
-        for t, theta in enumerate(theta23list):
 
-            metric_fit.append(data[fit][str(theta)])
+        try:
+            for t, theta in enumerate(theta23list):
+                
+                metric_fit.append(data[fit][str(theta)])
 
-            if (i==0):
-                th_degree = theta * ureg.degree
-                xval = np.sin(th_degree.m_as('radian'))**2
-                xvals_asimov.append(xval)
+            metric_all.append(metric_fit)
+            fit_names_completed.append(fit)
 
-        metric_all.append(metric_fit)
-
-    # Order of dmetric lists stored in dmetric_all: NO [position 0], IO_bf [position 1], IO [position 2], NO_bf [position 3]
-    for i in range(int(len(fit_names)/2)): 
-        dmetric_asimov = [a - b for a, b in zip(metric_all[2*i], metric_all[2*i+1])]
-        dmetric_all.append(dmetric_asimov)
-
-    # Sensitivities
-    sens_NO, NA_, sd_NO, _ = sensitivity(metric, obs_dmetric=dmetric_all[0], dmetric_NO=dmetric_all[0], dmetric_IO=dmetric_all[1])
-    NA_, sens_IO, _, sd_IO = sensitivity(metric, obs_dmetric=dmetric_all[2], dmetric_NO=dmetric_all[3], dmetric_IO=dmetric_all[2])
+        except KeyError:
+            pass
+   
+    # List of indeces of the fit names that user provided. Necessary mostly just for the quick fit case.
+    index_names_completed = [fit_names.index(i) for i in fit_names_completed if i in fit_names]
     
+    # Order of dmetric lists stored in dmetric_all: NO [position 0], IO_bf [position 1], IO [position 2], NO_bf [position 3]
+    for i in range(int(len(fit_names)/2)):
+
+        if all(x in index_names_completed for x in [2*i, 2*i+1]):
+            even_index = np.where(np.array(index_names_completed)==(2*i))[0][0]
+            odd_index = np.where(np.array(index_names_completed)==(2*i+1))[0][0]
+        
+            dmetric_asimov = [a - b for a, b in zip(metric_all[even_index], metric_all[odd_index])]
+
+        # Sometimes we may want to just run the fits for NO_IO_bf and IO_NO_bf to get a faster Asimov simple sensitivity 
+        # since NO_NO and IO_IO should both be zero. This exception handles the quick fit case.
+        elif (2*i) in index_names_completed:
+            assert (2*i) is not (((i**2)+i+2)/2), ('Provided only a fit of two templates of the same type. Cannot calculate sensitivity!')
+            
+            even_index = np.where(np.array(index_names_completed)==(2*i))[0][0]
+            dmetric_asimov = [a - b for a, b in zip(metric_all[even_index], [0.] * len(theta23list))]
+        
+        elif (2*i+1) in index_names_completed:
+            assert (2*i+1) is not (((i**2)+i+2)/2), ('Provided only a fit of two templates of the same type. Cannot calculate sensitivity!')
+            
+            odd_index = np.where(np.array(index_names_completed)==(2*i+1))[0][0]
+            dmetric_asimov = [a - b for a, b in zip([0.] * len(theta23list), metric_all[odd_index])]
+        
+        else:
+            # Placeholder to keep correct index of lists
+            dmetric_asimov = [0.] * len(theta23list)
+        
+        dmetric_all.append(dmetric_asimov)
+    
+    # Sensitivities
+    try:
+        sens_NO, NA_, sd_NO, _ = sensitivity(metric, obs_dmetric=dmetric_all[0], dmetric_NO=dmetric_all[0], dmetric_IO=dmetric_all[1])
+        NA_, sens_IO, _, sd_IO = sensitivity(metric, obs_dmetric=dmetric_all[2], dmetric_NO=dmetric_all[3], dmetric_IO=dmetric_all[2])
+   
+    except ZeroDivisionError:
+        sens_NO = 0.
+        sens_IO = 0.
+
     simple_sens_NO = simple_sensitivity(metric, obs_dmetric=dmetric_all[0])
     simple_sens_IO = simple_sensitivity(metric, obs_dmetric=dmetric_all[2])
 
@@ -169,23 +209,23 @@ def make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO
     fig, ax = plt.subplots(figsize=(10,10))
     plt.grid()
 
-    if (simple_sens==False):
+    if not simple_sens:
         ax.plot(xval, sens_NO, label='9.3 years, true NO', lw=4.5, color='red')
         ax.plot(xval, sens_IO, label='9.3 years, true IO', lw=4.5, color='blue')
     else:
         ax.plot(xval, simple_sens_NO, label='9.3 years, true NO', lw=4.5, color='red')
         ax.plot(xval, simple_sens_IO, label='9.3 years, true IO', lw=4.5, color='blue')
 
-    if (two_sensitivities==True):
+    if two_sensitivities:
         xval2, metric_all2, dmetric_all2, sens_NO2, sens_IO2, simple_sens_NO2, simple_sens_IO2 = asimov_vals(theta23list, asimov_file2, metric)
-        if (simple_sens==False):
+        if not simple_sens:
             ax.plot(xval2, sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dashed')
             ax.plot(xval2, sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dashed')
         else:
-            ax.plot(xval2, simple_sens_NO2, label='Test, true NO', lw=4.5, color='red')
-            ax.plot(xval2, simple_sens_IO2, label='Test, true IO', lw=4.5, color='blue')
+            ax.plot(xval2, simple_sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dotted')
+            ax.plot(xval2, simple_sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dotted')
 
-    if (greco==True):
+    if greco:
         x_gno, y_gno, x_gio, y_gio = greco_plots()
         ax.plot(x_gno, y_gno, label='3 years, true NO', zorder=3, lw=3, color='red', linestyle='dashed')
         ax.plot(x_gio, y_gio, label='3 years, true IO', zorder=3, lw=3, color='blue', linestyle='dashed')
@@ -328,10 +368,11 @@ parser.add_argument('-af', dest='alternate_file', type=str, required=False, defa
 parser.add_argument('-of', dest='octant_info_file', type=str, required=False, default=None, help='File with octant labels for all fits')
 parser.add_argument('-g', dest='greco', action='store_true', required=False, help='Include GRECO sensitivities in plot')  
 parser.add_argument('-s', dest='simple_sens', action='store_true', required=False, help='Plot simple sensitivities using only two out of the four fits')  
+parser.add_argument('-q', dest='quick_fit', action='store_true', required=False, default=False, help='Plot simple sensitivities using only one out of the four fits')  
 
 args = parser.parse_args()
 
-theta23 = np.round(np.linspace(39.0, 51.0, 20),2)
+theta23 = np.round(np.linspace(38.0, 52.0, 100),2)[4:]
 theta23list = theta23.tolist()
 
 assert args.metric is not None, ('Need to provide the metric that is being used!')
@@ -344,21 +385,27 @@ bf = ['', '_bf', '', '_bf', '_bf', '', '_bf', '']
 xval, metric_all, dmetric_all, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO = asimov_vals(theta23list, args.asimov_file, args.metric)
 
 # Plot metric values for each fit in the analysis
-for i, name in enumerate(dfit_names):
-    plot_metric_asimov(xval, metric_all[2*i], metric_all[2*i+1], name, 'NO'+bf[2*i], 'IO'+bf[2*i+1], args.metric)
+if not args.quick_fit:
+    for i, name in enumerate(dfit_names):
+        plot_metric_asimov(xval, metric_all[2*i], metric_all[2*i+1], name, 'NO'+bf[2*i], 'IO'+bf[2*i+1], args.metric)
    
 # Plot dmetric values for each dfit in the analysis
-make_dmetric_asimov_plot(xval, dmetric_all, args.metric)
+if not args.quick_fit:
+    make_dmetric_asimov_plot(xval, dmetric_all, args.metric)
 
 # Plot minimizer octant fit choices and final choice 
-if (args.alternate_file != None and args.octant_info_file != None):
-   octant_dependency(args.alternate_file, args.octant_info_file, theta23list, dmetric_all, args.metric) 
+if not args.quick_fit:
+    if (args.alternate_file != None and args.octant_info_file != None):
+       octant_dependency(args.alternate_file, args.octant_info_file, theta23list, dmetric_all, args.metric) 
 
 # Plot sensitivity
 make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, simple_sens=args.simple_sens, greco=args.greco)
 
 # Compare main sensitivity to a second sensitivity for testing purposes
 if (args.asimov_file2 != None):
-    make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, simple_sens=args.simple_sens, greco=args.greco, two_sensitivities=True, theta23list=theta23list, asimov_file2=args.asimov_file2, metric=args.metric)
+    theta23_2 = np.round(np.linspace(39.0, 51.0, 20),2)
+    theta23list2 = theta23_2.tolist()
+    
+    make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, simple_sens=args.simple_sens, greco=args.greco, two_sensitivities=True, theta23list=theta23list2, asimov_file2=args.asimov_file2, metric=args.metric)
 
 dump_figures_to_pdf("asimov_plots_file.pdf")
