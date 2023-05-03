@@ -1,8 +1,10 @@
 """
 
 This script performs four different types of fits as part of the 
-NMO Asimov analysis (without adding statistical fluctuations). Each
-of these fit results are stored separately in a JSON file for later sorting and organizing.
+NMO Asimov analysis (without adding statistical fluctuations). 
+Additionally, one can perform the same four fits including statistical 
+fluctuations for the NMO Pseudotrial method. Each of these fit results 
+are stored separately in a JSON file for later sorting and organizing.
 
 Author: Maria Prado Rodriguez (mvprado@icecube.wisc.edu)
 
