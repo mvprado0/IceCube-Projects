@@ -165,14 +165,22 @@ def simple_sensitivity(metric, obs_dmetric):
 
     return sensitivity
 
-def octant_dependency(alternate_file, octant_info_file, theta23list, dmetric_all, metric, type_label=None, means_list=None, meansx_list=None):
+def octant_dependency(alternate_file, octant_info_file, theta23list, dmetric_all, metric, quick_fit=False, type_label=None, means_list=None, meansx_list=None):
     
     with open(alternate_file) as f:
         alt_data = json.load(f)
     with open(octant_info_file) as f:
         oct_data = json.load(f)
 
-    oct_names = ["NO_IO_bf", "IO_bf_NO", "IO_NO_bf", "NO_bf_IO"]
+    if quick_fit:
+        oct_names = ["NO_IO_bf", "IO_NO_bf"]
+        sign_dmetric = [0]
+        plot_index = 1
+    else:
+        oct_names = ["NO_IO_bf", "IO_bf_NO", "IO_NO_bf", "NO_bf_IO"]
+        sign_dmetric = [0, 3]
+        plot_index = 2
+
     oct_all = []
     c_oct_all = []
     w_oct_all = []
@@ -190,20 +198,24 @@ def octant_dependency(alternate_file, octant_info_file, theta23list, dmetric_all
       
     # Assemble lists of correct and wrong octant values for all corresponding metric fits 
     for i in range(len(oct_names)):
-        c_oct, w_oct = octant_curves(oct_all[i], metric_all[int(((i**2)+i+2)/2)], alt_metric_all[int(((i**2)+i+2)/2)])
+        if quick_fit:
+            c_oct, w_oct = octant_curves(oct_all[i], metric_all[i], alt_metric_all[i])
+        else:
+            c_oct, w_oct = octant_curves(oct_all[i], metric_all[int(((i**2)+i+2)/2)], alt_metric_all[int(((i**2)+i+2)/2)])
+        
         c_oct_all.append(c_oct)
         w_oct_all.append(w_oct)
   
     # For true NO and true NO bf fits, multiply each value by -1 to obtain correct sign for dmetric values
     # This means using zero for NO_NO, IO_IO, NO_bf_NO_bf, and IO_bf_IO_bf best fits, which is a very good approximation
-    for i in [0, 3]:
+    for i in sign_dmetric:
         c_oct_all[i] = [-1*x for x in c_oct_all[i]]
         w_oct_all[i] = [-1*x for x in w_oct_all[i]]
 
     if (type_label==None):
-        make_dmetric_octant_plot(xval, dmetric_all[0], c_oct_all[0], w_oct_all[0], dmetric_all[2], c_oct_all[2], w_oct_all[2], metric)
+        make_dmetric_octant_plot(xval, dmetric_all[0], c_oct_all[0], w_oct_all[0], dmetric_all[2], c_oct_all[plot_index], w_oct_all[plot_index], metric)
     else:
-        make_dmetric_octant_plot(xval, dmetric_all[0], c_oct_all[0], w_oct_all[0], dmetric_all[2], c_oct_all[2], w_oct_all[2], metric, type_label, means_list, meansx_list)
+        make_dmetric_octant_plot(xval, dmetric_all[0], c_oct_all[0], w_oct_all[0], dmetric_all[2], c_oct_all[plot_index], w_oct_all[plot_index], metric, type_label, means_list, meansx_list)
 
 def make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, simple_sens=False, greco=False, two_sensitivities=False, theta23list=None, asimov_file2=None, metric=None):
 
@@ -224,8 +236,8 @@ def make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO
             ax.plot(xval2, sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dotted')
             ax.plot(xval2, sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dotted')
         else:
-            ax.plot(xval2, simple_sens_NO2, label='Test, true NO', lw=4.5, color='red', linestyle='dotted')
-            ax.plot(xval2, simple_sens_IO2, label='Test, true IO', lw=4.5, color='blue', linestyle='dotted')
+            ax.plot(xval2, simple_sens_NO2, label='Test, true NO', lw=4.5, color='black', linestyle='dotted')
+            ax.plot(xval2, simple_sens_IO2, label='Test, true IO', lw=4.5, color='black', linestyle='dotted')
 
     if greco:
         x_gno, y_gno, x_gio, y_gio = greco_plots()
@@ -246,7 +258,7 @@ def make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO
 
     ax.legend(loc='upper left', fontsize=16, ncol=1)
 
-def make_dmetric_asimov_plot(xval, dmetric_all, metric, means_list=None, meansx_list=None, err_list=None):
+def make_dmetric_asimov_plot(xval, dmetric_all, metric, quick_fit=False, means_list=None, meansx_list=None, err_list=None):
 
     fig, ax = plt.subplots(figsize=(10,10))
     plt.grid()
@@ -254,8 +266,10 @@ def make_dmetric_asimov_plot(xval, dmetric_all, metric, means_list=None, meansx_
     # Order of dmetric_all is ["NO", "IO_bf", "IO", "NO_bf"]
     ax.plot(xval, dmetric_all[0], label='Asimov, true NO', zorder=3, lw=3, color='red')
     ax.plot(xval, dmetric_all[2], label='Asimov, true IO', zorder=3, lw=3, color='blue')
-    ax.plot(xval, dmetric_all[1], label='Asimov, best fit IO', zorder=3, lw=3, color='green')
-    ax.plot(xval, dmetric_all[3], label='Asimov, best fit NO', zorder=3, lw=3, color='orange')
+
+    if not quick_fit:
+        ax.plot(xval, dmetric_all[1], label='Asimov, best fit IO', zorder=3, lw=3, color='green')
+        ax.plot(xval, dmetric_all[3], label='Asimov, best fit NO', zorder=3, lw=3, color='orange')
 
     # Mean dmetric values with error bars from the statistically fluctuated distributions for comparison against the Asimov dmetric values
     if (means_list != None):
@@ -284,7 +298,7 @@ def make_dmetric_asimov_plot(xval, dmetric_all, metric, means_list=None, meansx_
 
 def make_dmetric_octant_plot(xval, dp_no, dc_no, dw_no, dp_io, dc_io, dw_io, metric, type_label=None, means_list=None, meansx_list=None):
 
-    fig, ax = plt.subplots(figsize=(12,10))
+    fig, ax = plt.subplots(figsize=(10,12))
     plt.grid()
 
     # Dmetric plots for the minimizer's choice of minimum fit value, the fit value 
@@ -322,18 +336,22 @@ def make_dmetric_octant_plot(xval, dp_no, dc_no, dw_no, dp_io, dc_io, dw_io, met
         ax.set_ylabel(r'Modified $\Delta\chi^{2}_{NO-IO}$', fontsize=30)
     
     ax.set_xlabel(r'$\sin^2 \theta_{23}$', fontsize=30)
-    plt.title("9.3 Year NMO Analysis: Octant Dependency", fontsize=25)
+    plt.title("9.28-Year NMO Analysis: Octant Dependency", fontsize=25)
 
     ax.legend(loc='best',  fontsize='large', ncol=1)
 
-def plot_metric_asimov(xval, metric_NO, metric_IO, truth, label1, label2, metric):
+def plot_metric_asimov(xval, metric_NO, metric_IO, truth, label1, label2, metric, truth2=None):
 
     # Plot metric for normal and inverted ordering
     fig, ax = plt.subplots(figsize=(10,10))
     plt.grid()
 
-    ax.plot(xval, metric_NO, label=label1, zorder=3, lw=3, color='red')
-    ax.plot(xval, metric_IO, label=label2, zorder=3, lw=3, color='blue')
+    if (truth2 != None):
+        ax.plot(xval, metric_NO, label=truth+', '+label1, zorder=3, lw=3, color='red')
+        ax.plot(xval, metric_IO, label=truth2+', '+label2, zorder=3, lw=3, color='blue')
+    else:
+        ax.plot(xval, metric_NO, label=label1, zorder=3, lw=3, color='red')
+        ax.plot(xval, metric_IO, label=label2, zorder=3, lw=3, color='blue')
 
     if (metric=='llh'):
         ax.set_ylabel(r'LLH', fontsize='x-large')
@@ -345,7 +363,10 @@ def plot_metric_asimov(xval, metric_NO, metric_IO, truth, label1, label2, metric
         ax.set_ylabel(r'Modified $\chi^2$', fontsize='x-large')
     
     ax.set_xlabel(r'$\sin^2 \theta_{23}$', fontsize='x-large')
-    plt.title("Asimov, Truth: " + truth, fontsize=25)
+    if (truth2 != None):
+        plt.title("Asimov", fontsize=25)
+    else:
+        plt.title("Asimov, Truth: " + truth, fontsize=25)
 
     ax.legend(loc='best', fontsize='large', ncol=1)
 
@@ -382,6 +403,7 @@ parser.add_argument('-q', dest='quick_fit', action='store_true', required=False,
 
 args = parser.parse_args()
 
+#theta23 = np.round(np.linspace(38.0, 52.0, 50),2)[4:]
 theta23 = np.round(np.linspace(38.0, 52.0, 100),2)[4:]
 theta23list = theta23.tolist()
 
@@ -398,15 +420,21 @@ xval, metric_all, dmetric_all, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO 
 if not args.quick_fit:
     for i, name in enumerate(dfit_names):
         plot_metric_asimov(xval, metric_all[2*i], metric_all[2*i+1], name, 'NO'+bf[2*i], 'IO'+bf[2*i+1], args.metric)
-   
+else:
+    plot_metric_asimov(xval, metric_all[0], metric_all[1], 'NO', 'IO_bf', 'NO_bf', args.metric, truth2='IO')
+
 # Plot dmetric values for each dfit in the analysis
 if not args.quick_fit:
     make_dmetric_asimov_plot(xval, dmetric_all, args.metric)
+else:    
+    make_dmetric_asimov_plot(xval, dmetric_all, args.metric, quick_fit=True)
 
 # Plot minimizer octant fit choices and final choice 
-if not args.quick_fit:
-    if (args.alternate_file != None and args.octant_info_file != None):
+if (args.alternate_file != None and args.octant_info_file != None):
+    if not args.quick_fit:
        octant_dependency(args.alternate_file, args.octant_info_file, theta23list, dmetric_all, args.metric) 
+    else:
+       octant_dependency(args.alternate_file, args.octant_info_file, theta23list, dmetric_all, args.metric, quick_fit=True) 
 
 # Plot sensitivity
 make_sensitivity_plot(xval, sens_NO, sens_IO, simple_sens_NO, simple_sens_IO, simple_sens=args.simple_sens, greco=args.greco)
